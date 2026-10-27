@@ -10,7 +10,7 @@ VENV_PY := .venv/bin/python
 CREATE_VENV := python3.11 -m venv .venv
 endif
 
-.PHONY: setup setup-ml lint test up down smoke logs
+.PHONY: setup setup-ml lint test up down smoke logs ingest clean splits eda
 
 ## Install core+dev dependencies into .venv and create .env from example (first run only)
 setup:
@@ -50,3 +50,19 @@ logs:
 smoke:
 	@echo "[smoke] Phase 0 placeholder — running unit tests; full e2e arrives in Phase 12"
 	$(VENV_PY) -m pytest
+
+## Phase 1: download raw category files (skips what exists) and print row counts
+ingest:
+	$(VENV_PY) -m voc.data.ingest
+
+## Phase 1: Pandas reference cleaner → data/processed/reviews_clean.parquet
+clean:
+	$(VENV_PY) -m voc.data.clean
+
+## Phase 1: split column + four fixed eval files (seed 42)
+splits:
+	$(VENV_PY) -m voc.data.splits
+
+## Phase 1: execute notebooks/eda.ipynb in place
+eda:
+	$(VENV_PY) -c "import nbformat; from nbclient import NotebookClient; p='notebooks/eda.ipynb'; nb=nbformat.read(p, as_version=4); NotebookClient(nb, timeout=600, kernel_name='python3').execute(); nbformat.write(nb, p); print('executed', p)"

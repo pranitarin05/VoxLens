@@ -95,9 +95,9 @@ Rules: never rewrite history; append new decisions; only measured facts.
 ## D14 · 2026-10-27 · Category selection (data)
 
 - **Finding (verified sizes):** All_Beauty 701.5K/94 MB · Amazon_Fashion 2.5M/279 MB · Appliances 2.1M/258 MB · Video_Games 4.6M/776 MB · Electronics 43.9M/6.5 GB.
-- **Choice:** **pending user pick** — options offered: (A) Amazon_Fashion + All_Beauty = 3.2M reviews / 373 MB, (B) + Appliances = 5.3M / 631 MB, (C) user's own 2–3.
-- **Reason:** PRD 4.1 requires ≥1M total from 2–3 categories; PRD Phase 1 requires waiting for user's choice.
-- **Status:** **open — blocks Phase 1 only** (Phase 0 can proceed).
+- **Choice:** **(A) Amazon_Fashion + All_Beauty** = 3.2M reviews / 373 MB (user pick, 2026-10-27).
+- **Reason:** PRD 4.1 requires ≥1M total from 2–3 categories; 3.2M clears it with comfortable RAM headroom on 16 GB vs option B.
+- **Status:** decided — unblocks Phase 1.
 
 ---
 
@@ -105,8 +105,8 @@ Rules: never rewrite history; append new decisions; only measured facts.
 
 | Item | Needed by | Status |
 |---|---|---|
-| Category choice (D14) | Phase 1 | waiting on user |
+| Category choice (D14) | Phase 1 | **decided 2026-10-27: Amazon_Fashion + All_Beauty** |
 | Docker disk moved to D: (D6) | Phase 0 verify | waiting on user (GUI) |
 | `MAX_LLM_SPEND_USD` value (default proposal: **$5.00**) | Phase 6 | proposed, user confirms at dry-run |
-| Groq keys → `.env` | Phase 6 | keys received in `.env.txt`; will be copied to gitignored `.env` in Phase 0 |
+| Groq keys → `.env` | Phase 6 | **done** — keys in gitignored `.env` (Phase 0) |
 | Pricing table `configs/pricing.yaml` real prices | Phase 4/6 | placeholder first, filled with dated real prices before any cost claim |

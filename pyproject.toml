@@ -56,6 +56,8 @@ dev = [
     "pytest-cov==7.1.0",
     "ruff==0.17.3",
     "ipykernel==7.4.0",
+    "nbformat==5.11.1",
+    "nbclient==0.11.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -80,6 +82,10 @@ select = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B011"]
 "notebooks/*" = ["E402"]
+# Typer CLI entrypoints use Annotated defaults; B008 is not applicable there.
+"src/voc/data/ingest.py" = ["B008"]
+"src/voc/data/clean.py" = ["B008"]
+"src/voc/data/splits.py" = ["B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

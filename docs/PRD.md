@@ -274,8 +274,8 @@ Version policy: before installing anything, check the current stable release and
 
 ## 18. Definition of done (checklist)
 
-- [ ] Phase 0 scaffolding and CI green
-- [ ] Phase 1 data ingestion, cleaning, splits, EDA
+- [x] Phase 0 scaffolding and CI green
+- [x] Phase 1 data ingestion, cleaning, splits, EDA
 - [ ] Phase 2 scale processing and benchmark table
 - [ ] Phase 3 Postgres loaded and 8 analytics queries
 - [ ] Phase 4 evaluation harness, TF-IDF baseline, MLflow
