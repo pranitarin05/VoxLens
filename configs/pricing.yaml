@@ -1,0 +1,6 @@
+# PRD 7.7 - PLACEHOLDERS until Phase 4/6 fills dated real prices.
+# Never report a cost computed from these placeholders.
+hourly_rate_usd: null        # GPU instance assumption (Phase 4)
+llm_input_per_mtok_usd: null  # filled Phase 6 with lookup date
+llm_output_per_mtok_usd: null # filled Phase 6 with lookup date
+

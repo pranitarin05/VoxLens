@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voc-platform"
+version = "0.1.0"
+description = "Voice-of-Customer Intelligence Platform: sentiment, aspects, RAG, MLOps"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = { text = "MIT" }
+authors = [{ name = "VoxLens" }]
+dependencies = [
+    # data
+    "pandas==3.1.0",
+    "pyarrow==26.0.0",
+    "dask[dataframe]==2026.8.0",
+    "scikit-learn==1.9.1",
+    "nltk==3.10.4",
+    # config / CLI
+    "pyyaml==6.0.3",
+    "python-dotenv==1.2.4",
+    "typer==0.27.3",
+    "psutil==7.2.2",
+    # database
+    "sqlalchemy==2.1.6",
+    "psycopg[binary]==3.3.6",
+    "pgvector==0.5.1",
+    # api
+    "fastapi==0.162.0",
+    "uvicorn==0.54.0",
+    "pydantic==2.14.1",
+    "httpx==0.28.1",
+    # dashboard
+    "streamlit==1.66.1",
+    # plots (EDA + results charts)
+    "matplotlib==3.11.2",
+    "seaborn==0.13.2",
+]
+
+[project.optional-dependencies]
+ml = [
+    "torch==2.14.1",
+    "transformers==5.21.0",
+    "datasets==5.1.0",
+    "sentence-transformers==6.2.0",
+    "tokenizers==0.23.3",
+    "safetensors==0.8.0",
+    "huggingface-hub==2.3.0",
+    "spacy==3.8.18",
+    "mlflow==3.17.2",
+    "groq==1.7.0",
+]
+dev = [
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "ruff==0.17.3",
+    "ipykernel==7.4.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["notebooks", "airflow"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # import sorting
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "SIM", # simplify
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+"notebooks/*" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "smoke: end-to-end smoke checks (expanded in Phase 12)",
+    "integration: needs Docker services",
+]

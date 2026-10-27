@@ -1,0 +1,8 @@
+# PRD 4.3 label mapping - filled in Phase 1
+rating_to_sentiment:
+  1: negative
+  2: negative
+  3: neutral
+  4: positive
+  5: positive
+

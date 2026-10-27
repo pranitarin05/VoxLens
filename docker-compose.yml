@@ -1,0 +1,26 @@
+# Phase 0: ONLY Postgres. Each later phase adds exactly one service
+# (mlflow -> api -> airflow -> dashboard) so a failure has one obvious suspect.
+# Credentials come from .env (never committed).
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: voc-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-voc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD not set - copy .env.example to .env}
+      POSTGRES_DB: ${POSTGRES_DB:-voc}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-voc} -d $${POSTGRES_DB:-voc}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  pgdata:

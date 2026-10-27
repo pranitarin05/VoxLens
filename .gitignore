@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets and local env
+.env
+.env.*
+!.env.example
+.env.txt
+
+# Data (never commit)
+data/raw/
+data/processed/
+data/incoming/
+*.parquet
+*.jsonl.gz
+
+# Model artifacts / weights
+models/production/
+*.pt
+*.bin
+*.safetensors
+mlruns/
+mlartifacts/
+
+# Results that are regenerable but keep small committed files allowed;
+# large HTML reports stay local
+results/drift/*.html
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Test / lint caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE / OS
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+
+# Airflow
+airflow/logs/
+airflow/*.db
+airflow/*.cfg
+airflow/webserver_config.py
+
+# Docker volumes (if ever local)
+.docker/

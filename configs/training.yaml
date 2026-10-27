@@ -1,0 +1,8 @@
+# PRD 7.4 transformer hyperparameters - used from Phase 5
+seed: 42
+max_len: 128
+learning_rate: 2.0e-5
+epochs: 2
+warmup_ratio: 0.06
+weight_decay: 0.01
+
