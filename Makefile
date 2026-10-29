@@ -10,7 +10,7 @@ VENV_PY := .venv/bin/python
 CREATE_VENV := python3.11 -m venv .venv
 endif
 
-.PHONY: setup setup-ml lint test up down smoke logs ingest clean splits eda
+.PHONY: setup setup-ml lint test up down smoke logs ingest clean splits eda dask parity bench
 
 ## Install core+dev dependencies into .venv and create .env from example (first run only)
 setup:
@@ -66,3 +66,18 @@ splits:
 ## Phase 1: execute notebooks/eda.ipynb in place
 eda:
 	$(VENV_PY) -c "import nbformat; from nbclient import NotebookClient; p='notebooks/eda.ipynb'; nb=nbformat.read(p, as_version=4); NotebookClient(nb, timeout=600, kernel_name='python3').execute(); nbformat.write(nb, p); print('executed', p)"
+
+## Phase 2: Dask cleaner → data/processed/reviews_clean_dask.parquet
+dask:
+	$(VENV_PY) -m voc.data.clean_spark
+
+## Phase 2: FR-3 exact parity on a 10k sample (fails if not identical)
+parity:
+	$(VENV_PY) -m voc.data.clean_spark parity
+
+## Phase 2: one small-bench point. Usage: make bench SIZE=100000 ENGINE=dask
+## SIZE is 100000 | 1000000 | full ; ENGINE is dask | pandas
+SIZE ?= 100000
+ENGINE ?= dask
+bench:
+	$(VENV_PY) -m voc.data.clean_spark bench --size $(SIZE) --engine $(ENGINE)
