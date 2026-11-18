@@ -87,6 +87,7 @@ select = [
 "src/voc/data/clean.py" = ["B008"]
 "src/voc/data/splits.py" = ["B008"]
 "src/voc/data/clean_spark.py" = ["B008"]
+"src/voc/db/load.py" = ["B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -110,3 +110,4 @@ Rules: never rewrite history; append new decisions; only measured facts.
 | `MAX_LLM_SPEND_USD` value (default proposal: **$5.00**) | Phase 6 | proposed, user confirms at dry-run |
 | Groq keys → `.env` | Phase 6 | **done** — keys in gitignored `.env` (Phase 0) |
 | Pricing table `configs/pricing.yaml` real prices | Phase 4/6 | placeholder first, filled with dated real prices before any cost claim |
+| Native Windows PostgreSQL 18 on :5432 | Phase 3 | **blocked Docker password auth 2026-10-29** — service `postgresql-x64-18` stopped + disabled via elevated PowerShell so Docker Postgres owns 5432. Re-enable only if user needs the native instance. |

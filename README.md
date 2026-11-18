@@ -11,9 +11,10 @@ Spec: [`docs/PRD.md`](docs/PRD.md). Flow: [`flow.md`](flow.md). Decisions: [`dec
 | 0 Scaffolding + CI | done | `make lint` / `make test` green; GitHub Actions green |
 | 1 Data (ingest/clean/splits/EDA) | done | 3,202,467 raw → 3,024,584 cleaned; 80/10/10; four eval files; `notebooks/eda.ipynb` executed |
 | 2 Scale (Dask + parity + bench) | done | 10k exact parity (9,727 rows); 12 benchmark points in `results/benchmarks/processing.csv` |
-| 3–12 | not started | — |
+| 3 DB (Postgres + COPY + 8 queries) | done | 914,983 products + 3,024,584 reviews in Postgres (= parquet); 8 analytics SQL files executed |
+| 4–12 | not started | — |
 
-Row counts above come from `make ingest` / `make clean` / `make splits` runs on 2026-10-27 (Amazon_Fashion + All_Beauty). Benchmark wall times and peak RSS are in the CSV (measured on this machine, not estimates).
+Row counts come from `make ingest` / `clean` / `splits` / `db-load` runs (2026-10-27/29). Benchmarks are in the CSV (measured, not estimated).
 
 ## Quickstart
 
@@ -54,6 +55,8 @@ notebooks/   eda.ipynb
 | `make lint` / `make test` | ruff + pytest |
 | `make up` / `make down` / `make logs` | Docker Compose services |
 | `make ingest` `clean` `splits` `eda` | Phase 1 pipeline |
+| `make dask` `parity` `bench` | Phase 2 Dask cleaner / FR-3 parity / one bench point |
+| `make db-migrate` `db-load` `db-counts` `db-analytics` | Phase 3 Postgres |
 
 ## Licence
 

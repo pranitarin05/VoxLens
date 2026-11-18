@@ -10,7 +10,7 @@ VENV_PY := .venv/bin/python
 CREATE_VENV := python3.11 -m venv .venv
 endif
 
-.PHONY: setup setup-ml lint test up down smoke logs ingest clean splits eda dask parity bench
+.PHONY: setup setup-ml lint test up down smoke logs ingest clean splits eda dask parity bench db-migrate db-load db-counts db-analytics
 
 ## Install core+dev dependencies into .venv and create .env from example (first run only)
 setup:
@@ -81,3 +81,19 @@ SIZE ?= 100000
 ENGINE ?= dask
 bench:
 	$(VENV_PY) -m voc.data.clean_spark bench --size $(SIZE) --engine $(ENGINE)
+
+## Phase 3: apply sql/migrations (idempotent)
+db-migrate:
+	$(VENV_PY) -m voc.db.load migrate
+
+## Phase 3: COPY-load data/processed/reviews.parquet into products + reviews
+db-load:
+	$(VENV_PY) -m voc.db.load load
+
+## Phase 3: print products/reviews row counts
+db-counts:
+	$(VENV_PY) -m voc.db.load counts
+
+## Phase 3: run all sql/analytics/*.sql once
+db-analytics:
+	$(VENV_PY) -m voc.db.load analytics

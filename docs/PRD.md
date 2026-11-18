@@ -277,7 +277,7 @@ Version policy: before installing anything, check the current stable release and
 - [x] Phase 0 scaffolding and CI green
 - [x] Phase 1 data ingestion, cleaning, splits, EDA
 - [x] Phase 2 scale processing and benchmark table
-- [ ] Phase 3 Postgres loaded and 8 analytics queries
+- [x] Phase 3 Postgres loaded and 8 analytics queries
 - [ ] Phase 4 evaluation harness, TF-IDF baseline, MLflow
 - [ ] Phase 5 DistilBERT and BERT trained and imported
 - [ ] Phase 6 LLM zero-shot and full comparison table
