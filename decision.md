@@ -99,6 +99,21 @@ Rules: never rewrite history; append new decisions; only measured facts.
 - **Reason:** PRD 4.1 requires ≥1M total from 2–3 categories; 3.2M clears it with comfortable RAM headroom on 16 GB vs option B.
 - **Status:** decided — unblocks Phase 1.
 
+## D15 · 2026-10-29 · MLflow store = local SQLite (amends D13)
+
+- **Options:** (a) local `sqlite:///mlflow.db` (tracking + model registry), (b) Docker `mlflow` server backed by Postgres.
+- **Choice:** (a) local SQLite for Phase 4. `mlflow.db` is gitignored; `make mlflow-ui` opens the UI. A container can be added later if multi-user access is needed.
+- **Reason:** MLflow's Model Registry needs a DB backend (file store cannot register models); SQLite satisfies this on Windows with zero extra RAM/disk while the stack is still light. D13's "mlflow service in Phase 4" is deferred, not abandoned.
+- **Status:** decided.
+
+## D16 · 2026-10-29 · Dependency pin adjustments (Phase 4)
+
+- **Finding:** `mlflow==3.17.2` requires `pyarrow<26`, conflicting with the pinned `pyarrow==26.0.0`; `pip index` shows `mlflow==3.18.0` accepts `pyarrow<27,>=4.0.0`.
+- **Choice:** bump `mlflow` to **3.18.0** (verified compatible with pyarrow 26.0.0 on Python 3.11).
+- **Finding:** the `[ml]` install produced **`torch 2.14.1+cpu`** → `torch.cuda.is_available() == False`.
+- **Implication:** Phase 5 GPU training requires a CUDA wheel per D12 (official CUDA index) and re-verification before any GPU claim. Recorded here so it is not forgotten.
+- **Status:** decided — Phase 4 uses CPU torch only (fine for TF-IDF/eval).
+
 ---
 
 ## Open items (tracked, not decisions yet)
@@ -109,5 +124,5 @@ Rules: never rewrite history; append new decisions; only measured facts.
 | Docker disk moved to D: (D6) | Phase 0 verify | waiting on user (GUI) |
 | `MAX_LLM_SPEND_USD` value (default proposal: **$5.00**) | Phase 6 | proposed, user confirms at dry-run |
 | Groq keys → `.env` | Phase 6 | **done** — keys in gitignored `.env` (Phase 0) |
-| Pricing table `configs/pricing.yaml` real prices | Phase 4/6 | placeholder first, filled with dated real prices before any cost claim |
-| Native Windows PostgreSQL 18 on :5432 | Phase 3 | **blocked Docker password auth 2026-10-29** — service `postgresql-x64-18` stopped + disabled via elevated PowerShell so Docker Postgres owns 5432. Re-enable only if user needs the native instance. |
+| Pricing table `configs/pricing.yaml` real prices | Phase 4/6 | **Phase 4:** `hourly_rate_usd=0.10` set as an explicit configurable ASSUMPTION (self-hosted instance, not measured). LLM token prices still null until Phase 6. |
+| Native Windows PostgreSQL 18 on :5432 | Phase 3 | service `postgresql-x64-18` Stopped + Disabled (elevated) so Docker Postgres owns 5432. Re-enable only if the user needs the native instance. |

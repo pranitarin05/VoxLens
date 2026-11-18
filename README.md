@@ -12,7 +12,8 @@ Spec: [`docs/PRD.md`](docs/PRD.md). Flow: [`flow.md`](flow.md). Decisions: [`dec
 | 1 Data (ingest/clean/splits/EDA) | done | 3,202,467 raw → 3,024,584 cleaned; 80/10/10; four eval files; `notebooks/eda.ipynb` executed |
 | 2 Scale (Dask + parity + bench) | done | 10k exact parity (9,727 rows); 12 benchmark points in `results/benchmarks/processing.csv` |
 | 3 DB (Postgres + COPY + 8 queries) | done | 914,983 products + 3,024,584 reviews in Postgres (= parquet); 8 analytics SQL files executed |
-| 4–12 | not started | — |
+| 4 Evaluation + TF-IDF baseline | done | TF-IDF (C=1.0) val macro-F1 0.6997; `results/model_comparison.csv/.md` from `llm_test_1500` + `test_50k`; runs logged to MLflow |
+| 5–12 | not started | — |
 
 Row counts come from `make ingest` / `clean` / `splits` / `db-load` runs (2026-10-27/29). Benchmarks are in the CSV (measured, not estimated).
 
@@ -57,6 +58,7 @@ notebooks/   eda.ipynb
 | `make ingest` `clean` `splits` `eda` | Phase 1 pipeline |
 | `make dask` `parity` `bench` | Phase 2 Dask cleaner / FR-3 parity / one bench point |
 | `make db-migrate` `db-load` `db-counts` `db-analytics` | Phase 3 Postgres |
+| `make eval-tfidf` `compare` `mlflow-ui` | Phase 4 TF-IDF baseline + comparison files + MLflow UI |
 
 ## Licence
 

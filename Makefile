@@ -10,7 +10,7 @@ VENV_PY := .venv/bin/python
 CREATE_VENV := python3.11 -m venv .venv
 endif
 
-.PHONY: setup setup-ml lint test up down smoke logs ingest clean splits eda dask parity bench db-migrate db-load db-counts db-analytics
+.PHONY: setup setup-ml lint test up down smoke logs ingest clean splits eda dask parity bench db-migrate db-load db-counts db-analytics eval-tfidf compare mlflow-ui
 
 ## Install core+dev dependencies into .venv and create .env from example (first run only)
 setup:
@@ -97,3 +97,16 @@ db-counts:
 ## Phase 3: run all sql/analytics/*.sql once
 db-analytics:
 	$(VENV_PY) -m voc.db.load analytics
+
+## Phase 4: train TF-IDF (tune C on val) + evaluate on llm_test_1500 + test_50k
+eval-tfidf:
+	$(VENV_PY) -m voc.models.tfidf train
+	$(VENV_PY) -m voc.models.tfidf evaluate
+
+## Phase 4: rebuild results/model_comparison.md from the CSV
+compare:
+	$(VENV_PY) -m voc.evaluation.compare
+
+## Phase 4: open the MLflow UI (sqlite store)
+mlflow-ui:
+	$(VENV_PY) -m mlflow ui --backend-store-uri sqlite:///mlflow.db

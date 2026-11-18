@@ -31,6 +31,9 @@ models/production/
 *.safetensors
 mlruns/
 mlartifacts/
+mlflow.db
+mlflow.db-*
+models/*.joblib
 
 # Results that are regenerable but keep small committed files allowed;
 # large HTML reports stay local
