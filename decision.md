@@ -147,6 +147,16 @@ Rules: never rewrite history; append new decisions; only measured facts.
 - **Consequence:** the LLM row is on 900 rows, not 1500; the README and results table state this explicitly. The remaining 600 rows can be added after the daily quota resets.
 - **Status:** decided.
 
+## D20 · 2026-11-19 · Phase 7 aspect extraction and draft gold set
+
+- **Choice:** 16-aspect taxonomy in `configs/aspects.yaml` (battery, screen, camera, shipping, price, quality, fit, comfort, durability, customer_service, packaging, sound, performance, ease_of_use, design, app). Match by spaCy noun chunks + PhraseMatcher + lemma map; one mention per (aspect, sentence); sentence sentiment from the production DistilBERT.
+- **spaCy model:** `en_core_web_sm==3.8.0` (compatible with spaCy 3.8.18). `spacy download` failed on a 15 s URL timeout; installed the official 3.8.0 wheel directly with pip (README documents it). It is not a PyPI package, so CI skips Phase 7 tests via `importorskip`.
+- **Measured facts:** 5,000 reviews → **7,111 aspect rows** across **3,125 reviews** in ~7 min on CPU (GPU idle at 42 °C). Top aspects: design 1,334; price 1,204; ease_of_use 890; comfort 690; fit 617.
+- **DB:** migration `0002_aspects_span.sql` adds `sentence_index`, `char_start`, `char_end`, `sentence`, `model_version`, `created_at` and a unique index on the span key. Loaded 7,111 rows; re-running inserted **0** (idempotent).
+- **Gold set:** drafted 100 real sentences from the extracted sample, one aspect each (54 positive / 27 negative / 19 neutral), marked `draft-pending-owner-review`. Draft scores: aspect P 0.8929 / R 1.0000 / F1 0.9434, sentiment 1.0000. **These are circular** (labels came from the same model) and are not final; the PRD requires owner hand labels.
+- **Consequence:** Phase 7 code, DB load and pipeline are done; the PRD checkbox stays open until the owner reviews/corrects `eval/aspect_gold.jsonl`.
+- **Status:** decided, pending owner review of the gold labels.
+
 ---
 
 ## Open items (tracked, not decisions yet)

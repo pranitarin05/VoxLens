@@ -1,3 +1,36 @@
-# PRD 8 - draft taxonomy (~15 aspects) created in Phase 7 for owner review
-aspects: []
-
+# PRD 8 taxonomy (draft v1, ~15 aspects). Terms are lower-cased; multi-word
+# entries are matched by PhraseMatcher, single words also by lemma.
+version: 1
+aspects:
+  - name: battery
+    terms: [battery, batteries, battery life, charge, charging, charger, power]
+  - name: screen
+    terms: [screen, display, resolution, touchscreen, lcd, oled]
+  - name: camera
+    terms: [camera, cameras, photo, photos, picture, pictures, lens, video quality]
+  - name: shipping
+    terms: [shipping, delivery, delivered, arrived, shipment, courier]
+  - name: price
+    terms: [price, cost, expensive, cheap, value, worth, money]
+  - name: quality
+    terms: [quality, build, build quality, material, materials, construction, craftsmanship]
+  - name: fit
+    terms: [fit, fitting, size, sizing, loose, tight, too small, too big]
+  - name: comfort
+    terms: [comfort, comfortable, uncomfortable, soft, cushion, ergonomic]
+  - name: durability
+    terms: [durability, durable, lasted, broke, broken, stopped working, fell apart, defective]
+  - name: customer_service
+    terms: [customer service, support, seller, return, refund, warranty, contacted]
+  - name: packaging
+    terms: [packaging, package, box, packed]
+  - name: sound
+    terms: [sound, audio, speaker, speakers, volume, microphone, mic]
+  - name: performance
+    terms: [performance, speed, fast, slow, lag, laggy, responsive, works well]
+  - name: ease_of_use
+    terms: [easy to use, easy, difficult, setup, install, instructions, user friendly, intuitive]
+  - name: design
+    terms: [design, looks, appearance, color, colour, style, aesthetic]
+  - name: app
+    terms: [app, application, software, update, firmware]

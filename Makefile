@@ -140,3 +140,19 @@ eval-llm-dry:
 ## Phase 6: live zero-shot on the 900-row subset (cached, hard MAX_LLM_SPEND_USD cap)
 eval-llm:
 	$(VENV_PY) -m voc.models.llm_zero_shot evaluate --dataset llm_test_900
+
+## Phase 7: extract aspects + sentence sentiment (5k reviews, CPU)
+aspects-extract:
+	$(VENV_PY) -m voc.nlp.aspects extract --limit 5000 --out data/processed/aspects_sample.parquet
+
+## Phase 7: load aspects parquet into Postgres (idempotent on the span key)
+aspects-load:
+	$(VENV_PY) -m voc.nlp.aspects load --path data/processed/aspects_sample.parquet
+
+## Phase 7: draft the 100-sentence gold file (owner must review the labels)
+aspects-gold:
+	$(VENV_PY) -m voc.nlp.aspects draft-gold --mentions-path data/processed/aspects_sample.parquet
+
+## Phase 7: score aspect detection + sentiment against the gold file
+aspects-eval:
+	$(VENV_PY) -m voc.nlp.aspects evaluate

@@ -15,7 +15,8 @@ Spec: [`docs/PRD.md`](docs/PRD.md). Flow: [`flow.md`](flow.md). Decisions: [`dec
 | 4 Evaluation + TF-IDF baseline | done | TF-IDF (C=1.0) val macro-F1 0.6997; `results/model_comparison.csv/.md` from `llm_test_1500` + `test_50k`; runs logged to MLflow |
 | 5 Transformers (DistilBERT/BERT) | done | DistilBERT (60k, 1 epoch): `llm_test_1500` macro-F1 0.7095, `test_50k` 0.7090, p95 8.26/8.47 ms; BERT-base (30k, 1 epoch): 0.6851/0.6987, p95 15.12/16.50 ms. Both trained to completion in 250-step GPU chunks (peak 64 °C). DistilBERT registered in MLflow with alias `production`. |
 | 6 LLM zero-shot | done | `openai/gpt-oss-120b` on a deterministic 900-row subset (`llm_test_900`): acc 0.8322, macro-F1 0.6463, parse-failure 1.11%, p95 1424 ms; total spend $0.0436 (cap $5). Free tier allows 1000 requests/day/model; details in `decision.md` D19. |
-| 7–12 | not started | — |
+| 7 Aspects | code + DB done; gold draft awaiting owner review | 16-aspect taxonomy; spaCy `en_core_web_sm` 3.8.0 + PhraseMatcher; DistilBERT per aspect sentence. 5,000 reviews → 7,111 aspect rows (3,125 reviews) loaded idempotently into Postgres. Draft 100-sentence gold: P 0.8929 / R 1.0 / F1 0.9434, sentiment 1.0 — **circular until you correct the labels**. |
+| 8–12 | not started | — |
 
 Row counts come from `make ingest` / `clean` / `splits` / `db-load` runs (2026-10-27/29). Benchmarks are in the CSV (measured, not estimated).
 
@@ -62,6 +63,13 @@ notebooks/   eda.ipynb
 | `make db-migrate` `db-load` `db-counts` `db-analytics` | Phase 3 Postgres |
 | `make eval-tfidf` `compare` `mlflow-ui` | Phase 4 TF-IDF baseline + comparison files + MLflow UI |
 | `make smoke-transformer` `train-chunk` `train-distilbert` `eval-distilbert` `train-bert` | Phase 5 transformer training (GPU) |
+| `make aspects-extract` `aspects-load` `aspects-gold` `aspects-eval` | Phase 7 aspect extraction, DB load, gold draft, scoring |
+
+Phase 7 also needs the spaCy model (not on PyPI as a normal dep):
+
+```bash
+python -m pip install "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+```
 
 ## Licence
 
