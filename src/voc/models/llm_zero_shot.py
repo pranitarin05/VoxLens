@@ -50,6 +50,8 @@ MAX_CHARS = 2000
 CACHE_DIR = Path(".cache/llm")
 CACHE_PATH = CACHE_DIR / "responses.jsonl"
 SPEND_PATH = CACHE_DIR / "spend.json"
+# Bump when prompt/generation settings change so stale cache entries are ignored.
+CACHE_VERSION = "v2-gpt-oss-low-64"
 
 app = typer.Typer(add_completion=False, help="LLM zero-shot sentiment (Groq).")
 
@@ -82,7 +84,17 @@ def build_prompt(text: str) -> str:
 
 
 def cache_key(model: str, prompt: str) -> str:
-    return hashlib.sha256(f"{model}|{prompt}".encode()).hexdigest()
+    return hashlib.sha256(f"{CACHE_VERSION}|{model}|{prompt}".encode()).hexdigest()
+
+
+def _header(exc: Exception, name: str) -> str | None:
+    """Read a response header (case-insensitive) from an SDK exception."""
+    response = getattr(exc, "response", None)
+    headers = getattr(response, "headers", None) or {}
+    for key, value in headers.items():
+        if key.lower() == name:
+            return str(value)
+    return None
 
 
 def parse_label(raw: str) -> str:
@@ -161,10 +173,11 @@ class LLMClient:
         cache_path: Path = CACHE_PATH,
         spend_path: Path = SPEND_PATH,
         transport: Transport | None = None,
-        min_interval_s: float = 0.15,
+        min_interval_s: float = 1.2,
         max_retries: int = 4,
         temperature: float = 0.0,
-        max_tokens: int = 4,
+        max_completion_tokens: int = 64,
+        reasoning_effort: str = "low",
         pricing: dict[str, Any] | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
@@ -179,7 +192,8 @@ class LLMClient:
         self.max_spend_usd = float(cap)
         self.provider = provider
         self.temperature = temperature
-        self.max_tokens = max_tokens
+        self.max_completion_tokens = max_completion_tokens
+        self.reasoning_effort = reasoning_effort
         self.min_interval_s = min_interval_s
         self.max_retries = max_retries
         self.cache_path = cache_path
@@ -202,6 +216,7 @@ class LLMClient:
         self.live_calls = 0
         self.cache_hits = 0
         self._last_call = 0.0
+        self._key_index = 0
 
     def _respect_rate_limit(self) -> None:
         elapsed = time.monotonic() - self._last_call
@@ -224,7 +239,8 @@ class LLMClient:
                     {"role": "user", "content": prompt},
                 ],
                 temperature=self.temperature,
-                max_tokens=self.max_tokens,
+                max_completion_tokens=self.max_completion_tokens,
+                reasoning_effort=self.reasoning_effort,
             )
             raw = response.choices[0].message.content or ""
             tokens_in = int(response.usage.prompt_tokens)
@@ -251,9 +267,8 @@ class LLMClient:
             RateLimitError,
         )
 
-        retryable = (RateLimitError, APIConnectionError, APITimeoutError, InternalServerError)
+        retryable = (APIConnectionError, APITimeoutError, InternalServerError)
         auth = (AuthenticationError, PermissionDeniedError)
-        key_index = 0
         last_error: Exception | None = None
         for attempt in range(self.max_retries + 1):
             if self.spent_usd >= self.max_spend_usd:
@@ -261,22 +276,31 @@ class LLMClient:
                     f"spend ${self.spent_usd:.4f} >= cap ${self.max_spend_usd:.2f}"
                 )
             self._respect_rate_limit()
+            key = self.keys[self._key_index] if self.keys else ""
             try:
-                return self._call_once(prompt, self.keys[key_index] if self.keys else "")
+                return self._call_once(prompt, key)
             except auth as exc:
-                if key_index + 1 < len(self.keys):
-                    key_index += 1
+                if self._key_index + 1 < len(self.keys):
+                    self._key_index += 1
                     last_error = exc
                     continue
                 raise LLMError(f"authentication failed: {exc}") from exc
+            except RateLimitError as exc:
+                last_error = exc
+                remaining = _header(exc, "x-ratelimit-remaining-requests")
+                if remaining == "0" and len(self.keys) > 1 and attempt < self.max_retries:
+                    self._key_index = (self._key_index + 1) % len(self.keys)
+                    continue
+                if attempt >= self.max_retries:
+                    break
+                delay = min(30.0, 1.5 * (2**attempt)) + random.uniform(0, 0.3)
+                self.sleep(delay)
             except retryable as exc:
                 last_error = exc
                 if attempt >= self.max_retries:
                     break
                 delay = min(30.0, 1.5 * (2**attempt)) + random.uniform(0, 0.3)
                 self.sleep(delay)
-                if attempt >= 1 and len(self.keys) > 1:
-                    key_index = (key_index + 1) % len(self.keys)
         raise LLMError(f"provider failed after retries: {last_error}")
 
     def predict(self, text: str) -> Prediction:
@@ -350,6 +374,10 @@ def evaluate_dataset(client: LLMClient, dataset: str, limit: int | None = None) 
     y_pred = [p.label for p in predictions]
     metrics = compute_metrics(frame["label"].tolist(), y_pred)
     live_latencies = [p.latency_ms for p in predictions if not p.cached]
+    latency_source = "live"
+    if not live_latencies:
+        live_latencies = [p.latency_ms for p in predictions]
+        latency_source = "cache"
     live_tokens = [p for p in predictions if not p.cached]
     avg_in = float(np.mean([p.input_tokens for p in predictions]))
     avg_out = float(np.mean([p.output_tokens for p in predictions]))
@@ -370,6 +398,8 @@ def evaluate_dataset(client: LLMClient, dataset: str, limit: int | None = None) 
         "cost_per_1k_usd": cost_per_1k,
         "monthly_cost_usd": monthly_cost_at_1m(cost_per_1k),
         "run_spend_usd": client.run_spend_usd,
+        "cumulative_spend_usd": client.spent_usd,
+        "latency_source": latency_source,
         "live_latency_n": len(live_latencies),
         "avg_live_input_tokens": float(np.mean([p.input_tokens for p in live_tokens]))
         if live_tokens
@@ -388,6 +418,7 @@ def evaluate(
     limit: Annotated[int | None, typer.Option(help="only first N rows")] = None,
     model: Annotated[str | None, typer.Option(help="provider model id")] = None,
     dry_run: Annotated[bool, typer.Option(help="mock transport, no API spend")] = False,
+    write: Annotated[bool, typer.Option("--write/--no-write")] = True,
 ) -> None:
     """Score the LLM zero-shot model and upsert its comparison row."""
     if dry_run:
@@ -413,6 +444,9 @@ def evaluate(
     if dry_run:
         print("dry run: no comparison row written, no MLflow run")
         return
+    if not write:
+        print("no comparison row written (--no-write)")
+        return
 
     row: dict[str, Any] = {
         "model_name": "llm-zero-shot",
@@ -434,6 +468,8 @@ def evaluate(
         "avg_output_tokens": result["avg_output_tokens"],
         "parse_failure_rate": result["parse_failure_rate"],
         "run_spend_usd": result["run_spend_usd"],
+        "cumulative_spend_usd": result["cumulative_spend_usd"],
+        "latency_source": result["latency_source"],
         "live_latency_n": result["live_latency_n"],
     }
     for label, cls in metrics["per_class"].items():  # type: ignore[union-attr]
@@ -449,7 +485,8 @@ def evaluate(
                 "dataset": dataset,
                 "n": result["n"],
                 "temperature": client.temperature,
-                "max_tokens": client.max_tokens,
+                "max_completion_tokens": client.max_completion_tokens,
+                "reasoning_effort": client.reasoning_effort,
                 "parse_failure_rate": result["parse_failure_rate"],
             }
         )

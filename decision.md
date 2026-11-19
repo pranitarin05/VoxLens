@@ -135,6 +135,18 @@ Rules: never rewrite history; append new decisions; only measured facts.
 - **Consequence:** results are on subsets, not the full 200k; the README/PRD state the exact sample sizes. Full-data training remains possible via the same chunk runner.
 - **Status:** decided.
 
+## D19 · 2026-11-19 · Phase 6 LLM model, quota reality and evaluation subset
+
+- **Finding:** `.env` still named `llama-3.1-8b-instant`, which Groq retired from self-serve on 2026-08-16. `client.models.list()` (free) shows `openai/gpt-oss-20b`, `openai/gpt-oss-120b`, `qwen/qwen3.8-27b`.
+- **Finding:** with `max_tokens=4`, `gpt-oss-20b` returns empty content because reasoning tokens consume the budget. The first 1000 calls were therefore all `parse_failure`; that cache file is archived locally (`.cache/llm/responses.invalid-max4.jsonl`) and the $0.0113 spent is kept in the ledger.
+- **Fix:** `max_completion_tokens=64` + `reasoning_effort="low"` returns a clean one-word answer (~15-27 completion tokens); pacing set to 1.2 s to respect 8,000 tokens/min.
+- **Finding:** free tier is 1,000 requests/day **per model**. Both Groq keys are in the same organization, so the backup key adds **no** quota (D3's fallback still helps with auth/key failures, not with RPD).
+- **Choice:** evaluate `openai/gpt-oss-120b` (fresh quota) on a deterministic 900-row subset — the first 900 rows of `llm_test_1500` (616 positive / 193 negative / 91 neutral), saved as `data/processed/llm_test_900.parquet`. 900 instead of 1000 leaves a margin after probe requests used the daily quota. Prices: $0.15/M input, $0.60/M output (Groq model docs, read 2026-11-19).
+- **Measured facts:** accuracy 0.8322, macro-F1 0.6463, parse_failure_rate 0.0111, p50 735 ms, p95 1424 ms (measured live, read back from cache on the write pass), cost $0.0358/1k. Total Phase 6 spend across both models: **$0.0436** (ledger `.cache/llm/spend.json`).
+- **Also fixed:** `.env` `MLFLOW_TRACKING_URI` pointed at a non-running `http://localhost:5000`; set to `sqlite:///mlflow.db` (matches `.env.example` and the code default).
+- **Consequence:** the LLM row is on 900 rows, not 1500; the README and results table state this explicitly. The remaining 600 rows can be added after the daily quota resets.
+- **Status:** decided.
+
 ---
 
 ## Open items (tracked, not decisions yet)

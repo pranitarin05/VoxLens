@@ -14,7 +14,8 @@ Spec: [`docs/PRD.md`](docs/PRD.md). Flow: [`flow.md`](flow.md). Decisions: [`dec
 | 3 DB (Postgres + COPY + 8 queries) | done | 914,983 products + 3,024,584 reviews in Postgres (= parquet); 8 analytics SQL files executed |
 | 4 Evaluation + TF-IDF baseline | done | TF-IDF (C=1.0) val macro-F1 0.6997; `results/model_comparison.csv/.md` from `llm_test_1500` + `test_50k`; runs logged to MLflow |
 | 5 Transformers (DistilBERT/BERT) | done | DistilBERT (60k, 1 epoch): `llm_test_1500` macro-F1 0.7095, `test_50k` 0.7090, p95 8.26/8.47 ms; BERT-base (30k, 1 epoch): 0.6851/0.6987, p95 15.12/16.50 ms. Both trained to completion in 250-step GPU chunks (peak 64 °C). DistilBERT registered in MLflow with alias `production`. |
-| 6–12 | not started | — |
+| 6 LLM zero-shot | done | `openai/gpt-oss-120b` on a deterministic 900-row subset (`llm_test_900`): acc 0.8322, macro-F1 0.6463, parse-failure 1.11%, p95 1424 ms; total spend $0.0436 (cap $5). Free tier allows 1000 requests/day/model; details in `decision.md` D19. |
+| 7–12 | not started | — |
 
 Row counts come from `make ingest` / `clean` / `splits` / `db-load` runs (2026-10-27/29). Benchmarks are in the CSV (measured, not estimated).
 

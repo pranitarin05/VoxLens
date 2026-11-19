@@ -137,6 +137,6 @@ train-chunk:
 eval-llm-dry:
 	$(VENV_PY) -m voc.models.llm_zero_shot evaluate --dataset llm_test_1500 --dry-run
 
-## Phase 6: live zero-shot on llm_test_1500 (cached, hard MAX_LLM_SPEND_USD cap)
+## Phase 6: live zero-shot on the 900-row subset (cached, hard MAX_LLM_SPEND_USD cap)
 eval-llm:
-	$(VENV_PY) -m voc.models.llm_zero_shot evaluate --dataset llm_test_1500
+	$(VENV_PY) -m voc.models.llm_zero_shot evaluate --dataset llm_test_900

@@ -1,9 +1,9 @@
 # PRD 7.7 pricing. hourly_rate_usd is a CONFIGURABLE ASSUMPTION, not a
-# measured price: edit it to your provider's rate before trusting any cost.
-# LLM prices below are real list prices read from Groq's pricing page on
-# 2026-11-19 for model openai/gpt-oss-20b (llama-3.1-8b-instant was retired
-# from Groq self-serve on 2026-08-16).
+# measured price: edit it to your provider's rate.
+# LLM prices are real list prices read from Groq's model docs on 2026-11-19
+# for openai/gpt-oss-120b. (gpt-oss-20b is cheaper but its free-tier quota was
+# exhausted during Phase 6; see decision.md D19.)
 hourly_rate_usd: 0.10          # ASSUMPTION: small CPU cloud instance ~ $0.10/hr
-llm_model: openai/gpt-oss-20b
-llm_input_per_mtok_usd: 0.075   # Groq list price, read 2026-11-19
-llm_output_per_mtok_usd: 0.30   # Groq list price, read 2026-11-19
+llm_model: openai/gpt-oss-120b
+llm_input_per_mtok_usd: 0.15   # Groq list price, read 2026-11-19
+llm_output_per_mtok_usd: 0.60  # Groq list price, read 2026-11-19
