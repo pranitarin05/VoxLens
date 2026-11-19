@@ -10,7 +10,7 @@ VENV_PY := .venv/bin/python
 CREATE_VENV := python3.11 -m venv .venv
 endif
 
-.PHONY: setup setup-ml lint test up down smoke logs ingest clean splits eda dask parity bench db-migrate db-load db-counts db-analytics eval-tfidf compare mlflow-ui
+.PHONY: setup setup-ml lint test up down smoke logs ingest clean splits eda dask parity bench db-migrate db-load db-counts db-analytics eval-tfidf compare mlflow-ui train-distilbert eval-distilbert train-bert smoke-transformer train-chunk
 
 ## Install core+dev dependencies into .venv and create .env from example (first run only)
 setup:
@@ -110,3 +110,25 @@ compare:
 ## Phase 4: open the MLflow UI (sqlite store)
 mlflow-ui:
 	$(VENV_PY) -m mlflow ui --backend-store-uri sqlite:///mlflow.db
+
+## Phase 5: fine-tune DistilBERT on GPU (200k/20k, 2 epochs)
+train-distilbert:
+	$(VENV_PY) -m voc.models.transformer train --model-name distilbert-base-uncased --epochs 2 --batch-size 8 --grad-accum 4
+
+## Phase 5: score the DistilBERT checkpoint on llm_test_1500 + test_50k
+eval-distilbert:
+	$(VENV_PY) -m voc.models.transformer evaluate --model-dir models/distilbert-base-uncased
+
+## Phase 5: fine-tune BERT-base on GPU (batch 4 + grad_accum 8 for 4 GB)
+train-bert:
+	$(VENV_PY) -m voc.models.transformer train --model-name bert-base-uncased --epochs 2 --batch-size 4 --grad-accum 8
+
+## Phase 5: fast GPU smoke (2k/1 epoch) to verify the pipeline
+smoke-transformer:
+	$(VENV_PY) -m voc.models.transformer train --model-name distilbert-base-uncased --sample 2000 --val-sample 2000 --epochs 1 --batch-size 8 --grad-accum 4 --output-dir models/smoke-distilbert
+
+## Phase 5: ONE small training chunk (resumable). Usage: make train-chunk STEPS=250
+STEPS ?= 250
+RESUME ?= 0
+train-chunk:
+	$(VENV_PY) -m voc.models.transformer train --model-name distilbert-base-uncased --sample 20000 --val-sample 5000 --epochs 1 --batch-size 4 --grad-accum 8 --max-steps $(STEPS) --output-dir models/distilbert-chunk $(if $(filter 1,$(RESUME)),--resume,)

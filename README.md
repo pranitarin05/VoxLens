@@ -13,7 +13,8 @@ Spec: [`docs/PRD.md`](docs/PRD.md). Flow: [`flow.md`](flow.md). Decisions: [`dec
 | 2 Scale (Dask + parity + bench) | done | 10k exact parity (9,727 rows); 12 benchmark points in `results/benchmarks/processing.csv` |
 | 3 DB (Postgres + COPY + 8 queries) | done | 914,983 products + 3,024,584 reviews in Postgres (= parquet); 8 analytics SQL files executed |
 | 4 Evaluation + TF-IDF baseline | done | TF-IDF (C=1.0) val macro-F1 0.6997; `results/model_comparison.csv/.md` from `llm_test_1500` + `test_50k`; runs logged to MLflow |
-| 5–12 | not started | — |
+| 5 Transformers (DistilBERT/BERT) | code done, training in small resumable chunks | GPU verified (RTX 3050, torch 2.14.1+cu126, `cuda_available=True`); 2k smoke val macro-F1 0.5108 (16.1s); chunk resume 50→100 steps verified (~19s/chunk). Full 200k run deferred to short chunks (`scripts/train_chunks.ps1`) to avoid sustained GPU load. |
+| 6–12 | not started | — |
 
 Row counts come from `make ingest` / `clean` / `splits` / `db-load` runs (2026-10-27/29). Benchmarks are in the CSV (measured, not estimated).
 
@@ -59,6 +60,7 @@ notebooks/   eda.ipynb
 | `make dask` `parity` `bench` | Phase 2 Dask cleaner / FR-3 parity / one bench point |
 | `make db-migrate` `db-load` `db-counts` `db-analytics` | Phase 3 Postgres |
 | `make eval-tfidf` `compare` `mlflow-ui` | Phase 4 TF-IDF baseline + comparison files + MLflow UI |
+| `make smoke-transformer` `train-chunk` `train-distilbert` `eval-distilbert` `train-bert` | Phase 5 transformer training (GPU) |
 
 ## Licence
 

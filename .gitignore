@@ -25,6 +25,7 @@ data/incoming/
 *.jsonl.gz
 
 # Model artifacts / weights
+models/
 models/production/
 *.pt
 *.bin

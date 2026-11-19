@@ -49,6 +49,7 @@ ml = [
     "huggingface-hub==2.3.0",
     "spacy==3.8.18",
     "mlflow==3.18.0",
+    "accelerate==1.16.0",
     "groq==1.7.0",
 ]
 dev = [
@@ -89,6 +90,7 @@ select = [
 "src/voc/data/clean_spark.py" = ["B008"]
 "src/voc/db/load.py" = ["B008"]
 "src/voc/models/tfidf.py" = ["B008"]
+"src/voc/models/transformer.py" = ["B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
