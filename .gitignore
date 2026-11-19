@@ -25,8 +25,8 @@ data/incoming/
 *.jsonl.gz
 
 # Model artifacts / weights
-models/
-models/production/
+/models/
+/models/production/
 *.pt
 *.bin
 *.safetensors
@@ -34,7 +34,10 @@ mlruns/
 mlartifacts/
 mlflow.db
 mlflow.db-*
-models/*.joblib
+/models/*.joblib
+
+# LLM response cache and spend ledger
+.cache/
 
 # Results that are regenerable but keep small committed files allowed;
 # large HTML reports stay local

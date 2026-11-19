@@ -132,3 +132,11 @@ STEPS ?= 250
 RESUME ?= 0
 train-chunk:
 	$(VENV_PY) -m voc.models.transformer train --model-name distilbert-base-uncased --sample 20000 --val-sample 5000 --epochs 1 --batch-size 4 --grad-accum 8 --max-steps $(STEPS) --output-dir models/distilbert-chunk $(if $(filter 1,$(RESUME)),--resume,)
+
+## Phase 6: dry-run the LLM zero-shot pipeline (mock, no API calls, no results)
+eval-llm-dry:
+	$(VENV_PY) -m voc.models.llm_zero_shot evaluate --dataset llm_test_1500 --dry-run
+
+## Phase 6: live zero-shot on llm_test_1500 (cached, hard MAX_LLM_SPEND_USD cap)
+eval-llm:
+	$(VENV_PY) -m voc.models.llm_zero_shot evaluate --dataset llm_test_1500

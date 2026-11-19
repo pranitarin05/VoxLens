@@ -91,6 +91,7 @@ select = [
 "src/voc/db/load.py" = ["B008"]
 "src/voc/models/tfidf.py" = ["B008"]
 "src/voc/models/transformer.py" = ["B008"]
+"src/voc/models/llm_zero_shot.py" = ["B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
