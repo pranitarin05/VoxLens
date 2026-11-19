@@ -13,7 +13,7 @@ Spec: [`docs/PRD.md`](docs/PRD.md). Flow: [`flow.md`](flow.md). Decisions: [`dec
 | 2 Scale (Dask + parity + bench) | done | 10k exact parity (9,727 rows); 12 benchmark points in `results/benchmarks/processing.csv` |
 | 3 DB (Postgres + COPY + 8 queries) | done | 914,983 products + 3,024,584 reviews in Postgres (= parquet); 8 analytics SQL files executed |
 | 4 Evaluation + TF-IDF baseline | done | TF-IDF (C=1.0) val macro-F1 0.6997; `results/model_comparison.csv/.md` from `llm_test_1500` + `test_50k`; runs logged to MLflow |
-| 5 Transformers (DistilBERT/BERT) | code done, training in small resumable chunks | GPU verified (RTX 3050, torch 2.14.1+cu126, `cuda_available=True`); 2k smoke val macro-F1 0.5108 (16.1s); chunk resume 50→100 steps verified (~19s/chunk). Full 200k run deferred to short chunks (`scripts/train_chunks.ps1`) to avoid sustained GPU load. |
+| 5 Transformers (DistilBERT/BERT) | done | DistilBERT (60k, 1 epoch): `llm_test_1500` macro-F1 0.7095, `test_50k` 0.7090, p95 8.26/8.47 ms; BERT-base (30k, 1 epoch): 0.6851/0.6987, p95 15.12/16.50 ms. Both trained to completion in 250-step GPU chunks (peak 64 °C). DistilBERT registered in MLflow with alias `production`. |
 | 6–12 | not started | — |
 
 Row counts come from `make ingest` / `clean` / `splits` / `db-load` runs (2026-10-27/29). Benchmarks are in the CSV (measured, not estimated).

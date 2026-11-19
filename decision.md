@@ -119,7 +119,20 @@ Rules: never rewrite history; append new decisions; only measured facts.
 - **Context:** user reports sustained GPU load is undesirable; long fine-tuning runs were aborted mid-way.
 - **Choice:** (a) install the CUDA wheel `torch==2.14.1+cu126` (verified `cuda_available=True`, RTX 3050, 4294 MB); (b) train with `--max-steps` + `--resume` so each invocation is a short chunk that saves a checkpoint and releases the GPU; (c) provide `scripts/train_chunks.ps1` (fixed `save_steps`/`eval_steps` cadence, pause between chunks).
 - **Measured facts:** 2k/1-epoch DistilBERT smoke completed (val macro-F1 0.5108, 16.1s). Chunk resume verified: 50 steps (val F1 0.2779) then resumed to 100 steps (val F1 0.3906), checkpoint-100 saved, ~19s per chunk.
-- **Consequence:** full 200k DistilBERT/BERT training is **not yet complete**; Phase 5 code + chunk runner are done, and the full run is executed as many short chunks on demand.
+- **Consequence:** GPU runs are executed as many short chunks on demand; a full run is just a sequence of 250-step chunks.
+- **Status:** decided.
+
+## D18 · 2026-11-19 · Phase 5 training scope and production model
+
+- **Context:** D17 requires small chunks on a 4 GB laptop GPU; the PRD's 200k/2-epoch run is impractical under that constraint.
+- **Choice:** DistilBERT trained on a 60k sample for 1 epoch (effective batch 32: batch 4 × grad-accum 8, 1,875 steps in 8×250-step chunks). BERT-base trained on a 30k sample for 1 epoch (effective batch 16: batch 2 × grad-accum 8, 1,875 steps in 8×250-step chunks) after a 100-step smoke confirmed it fits the 4 GB card without OOM.
+- **Measured facts (FR-6 harness):**
+  - DistilBERT: `llm_test_1500` acc 0.8340 / macro-F1 0.7095 / p95 8.26 ms; `test_50k` acc 0.8398 / macro-F1 0.7090 / p95 8.47 ms.
+  - BERT-base: `llm_test_1500` acc 0.8460 / macro-F1 0.6851 / p95 15.12 ms; `test_50k` acc 0.8575 / macro-F1 0.6987 / p95 16.50 ms.
+  - GPU temperature peaked at 64 °C during training and 72 °C after the 50k inference pass; no OOM.
+- **Choice (production, PRD 7.8):** DistilBERT — highest macro-F1 among models with p95 ≤ 300 ms and lower latency/cost than BERT. Registered in MLflow as `distilbert` v1 with alias `production`.
+- **Implementation note:** `mlflow.transformers.log_model` pulls `torchvision` (not needed for text); registration uses a small `mlflow.pyfunc` wrapper (`transformer.py register`) instead, so no unrelated dependency was added.
+- **Consequence:** results are on subsets, not the full 200k; the README/PRD state the exact sample sizes. Full-data training remains possible via the same chunk runner.
 - **Status:** decided.
 
 ---

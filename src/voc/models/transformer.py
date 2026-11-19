@@ -11,6 +11,8 @@ shared FR-6 harness).
 
 from __future__ import annotations
 
+import shutil
+import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated
@@ -21,6 +23,7 @@ import pandas as pd
 import torch
 import typer
 import yaml
+from mlflow.pyfunc import PythonModel, PythonModelContext
 from torch import nn
 from torch.utils.data import Dataset
 from transformers import (
@@ -43,7 +46,7 @@ MODEL_DIR = Path("models")
 CONFIGS = Path("configs")
 LABEL2ID = {label: i for i, label in enumerate(LABELS)}
 ID2LABEL = {i: label for label, i in LABEL2ID.items()}
-CHUNK_SAVE_STEPS = 50
+CHUNK_SAVE_STEPS = 250
 
 
 def load_split(name: str, processed: Path = PROCESSED) -> pd.DataFrame:
@@ -189,8 +192,7 @@ def train(
         per_device_eval_batch_size=max(batch_size, 16),
         gradient_accumulation_steps=grad_accum,
         max_steps=max_steps or -1,
-        eval_strategy="steps" if chunk_mode else "epoch",
-        eval_steps=CHUNK_SAVE_STEPS if chunk_mode else None,
+        eval_strategy="no" if chunk_mode else "epoch",
         save_strategy="steps" if chunk_mode else "epoch",
         save_steps=CHUNK_SAVE_STEPS if chunk_mode else 500,
         logging_strategy="steps",
@@ -365,6 +367,72 @@ def evaluate_cmd(
             f"{dataset}: acc={row['accuracy']:.4f} macroF1={row['macro_f1']:.4f} "
             f"p95={row['single_p95_ms']:.2f}ms"
         )
+
+
+class _SentimentPyfunc(PythonModel):
+    """MLflow pyfunc wrapper so the fine-tuned model can be registered (FR-7)."""
+
+    def load_context(self, context: PythonModelContext) -> None:
+        folder = context.artifacts["model_dir"]
+        self.tokenizer = AutoTokenizer.from_pretrained(folder)
+        self.model = AutoModelForSequenceClassification.from_pretrained(folder)
+        self.model.eval()
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model.to(self.device)
+
+    def predict(self, context: PythonModelContext, model_input):  # noqa: ANN001
+        if isinstance(model_input, pd.DataFrame):
+            column = "text" if "text" in model_input.columns else model_input.columns[0]
+            texts = model_input[column].astype(str).tolist()
+        else:
+            texts = [str(item) for item in model_input]
+        labels: list[str] = []
+        with torch.no_grad():
+            for start in range(0, len(texts), 32):
+                batch = self.tokenizer(
+                    texts[start : start + 32],
+                    truncation=True,
+                    max_length=128,
+                    padding=True,
+                    return_tensors="pt",
+                ).to(self.device)
+                logits = self.model(**batch).logits
+                labels.extend(ID2LABEL[int(i)] for i in torch.argmax(logits, dim=-1).cpu().tolist())
+        return pd.DataFrame({"sentiment": labels})
+
+
+@app.command("register")
+def register_cmd(
+    model_dir: Annotated[str, typer.Option()] = "models/distilbert-60k",
+    name: Annotated[str, typer.Option(help="registered model name")] = "distilbert",
+    alias: Annotated[str, typer.Option()] = "production",
+) -> None:
+    """Log a trained transformer to MLflow and set the registry alias (FR-7)."""
+    source = Path(model_dir)
+    keep = (
+        "config.json",
+        "model.safetensors",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "special_tokens_map.json",
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp) / "model"
+        target.mkdir()
+        for fname in keep:
+            src = source / fname
+            if src.exists():
+                shutil.copy2(src, target / fname)
+        configure()
+        with mlflow.start_run(run_name=f"register-{name}") as run:
+            mlflow.pyfunc.log_model(
+                name="model",
+                python_model=_SentimentPyfunc(),
+                artifacts={"model_dir": str(target)},
+            )
+            run_id = run.info.run_id
+        version = register_model(run_id, name, alias=alias)
+    typer.echo(f"registered {name} version={version} alias={alias} (run {run_id})")
 
 
 def main() -> None:
