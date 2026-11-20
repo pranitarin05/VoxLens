@@ -74,6 +74,18 @@ class Prediction:
     cached: bool
 
 
+@dataclass(frozen=True)
+class ChatResult:
+    """A generic chat completion (used by RAG and the LLM judge)."""
+
+    content: str
+    input_tokens: int
+    output_tokens: int
+    latency_ms: float
+    cost_usd: float
+    cached: bool
+
+
 Transport = Callable[[str, str], tuple[str, int, int]]
 
 
@@ -223,7 +235,13 @@ class LLMClient:
             self.sleep(self.min_interval_s - elapsed)
         self._last_call = time.monotonic()
 
-    def _call_once(self, prompt: str, api_key: str) -> tuple[str, int, int, float]:
+    def _call_once(
+        self,
+        prompt: str,
+        api_key: str,
+        system_prompt: str | None = None,
+        max_completion_tokens: int | None = None,
+    ) -> tuple[str, int, int, float]:
         start = time.perf_counter()
         if self.transport is not None:
             raw, tokens_in, tokens_out = self.transport(prompt, api_key)
@@ -234,11 +252,11 @@ class LLMClient:
             response = client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": system_prompt or SYSTEM_PROMPT},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=self.temperature,
-                max_completion_tokens=self.max_completion_tokens,
+                max_completion_tokens=max_completion_tokens or self.max_completion_tokens,
                 reasoning_effort=self.reasoning_effort,
             )
             raw = response.choices[0].message.content or ""
@@ -247,7 +265,12 @@ class LLMClient:
         latency_ms = (time.perf_counter() - start) * 1000.0
         return raw, tokens_in, tokens_out, latency_ms
 
-    def _call(self, prompt: str) -> tuple[str, int, int, float]:
+    def _call(
+        self,
+        prompt: str,
+        system_prompt: str | None = None,
+        max_completion_tokens: int | None = None,
+    ) -> tuple[str, int, int, float]:
         if self.transport is not None:
             if self.spent_usd >= self.max_spend_usd:
                 raise SpendCapExceeded(
@@ -255,7 +278,7 @@ class LLMClient:
                 )
             self._respect_rate_limit()
             key = self.keys[0] if self.keys else "mock"
-            return self._call_once(prompt, key)
+            return self._call_once(prompt, key, system_prompt, max_completion_tokens)
 
         from groq import (
             APIConnectionError,
@@ -277,7 +300,7 @@ class LLMClient:
             self._respect_rate_limit()
             key = self.keys[self._key_index] if self.keys else ""
             try:
-                return self._call_once(prompt, key)
+                return self._call_once(prompt, key, system_prompt, max_completion_tokens)
             except auth as exc:
                 if self._key_index + 1 < len(self.keys):
                     self._key_index += 1
@@ -349,6 +372,71 @@ class LLMClient:
         return Prediction(
             label=label,
             raw=raw,
+            input_tokens=tokens_in,
+            output_tokens=tokens_out,
+            latency_ms=latency_ms,
+            cost_usd=cost,
+            cached=False,
+        )
+
+    def complete(
+        self,
+        prompt: str,
+        *,
+        system_prompt: str,
+        max_completion_tokens: int = 512,
+        cache_tag: str = "chat-v1",
+    ) -> ChatResult:
+        """Generic cached chat completion; same spend cap and key rotation."""
+        key = hashlib.sha256(
+            (
+                f"{CACHE_VERSION}|{cache_tag}|{self.model}|{max_completion_tokens}|"
+                f"{system_prompt}|{prompt}"
+            ).encode()
+        ).hexdigest()
+        cached = self.cache.get(key)
+        if cached is not None:
+            self.cache_hits += 1
+            return ChatResult(
+                content=cached["content"],
+                input_tokens=int(cached["input_tokens"]),
+                output_tokens=int(cached["output_tokens"]),
+                latency_ms=float(cached["latency_ms"]),
+                cost_usd=0.0,
+                cached=True,
+            )
+
+        raw, tokens_in, tokens_out, latency_ms = self._call(
+            prompt, system_prompt, max_completion_tokens
+        )
+        cost = usage_cost_usd(tokens_in, tokens_out, self.pricing)
+        self.spent_usd += cost
+        self.run_spend_usd += cost
+        self.live_calls += 1
+        _save_spend(self.spend_path, self.spent_usd)
+
+        record = {
+            "key": key,
+            "model": str(self.model),
+            "kind": "chat",
+            "content": raw,
+            "input_tokens": tokens_in,
+            "output_tokens": tokens_out,
+            "latency_ms": latency_ms,
+            "cost_usd": cost,
+            "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        }
+        self.cache[key] = record
+        self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.cache_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record) + "\n")
+
+        if self.spent_usd > self.max_spend_usd:
+            raise SpendCapExceeded(
+                f"spend ${self.spent_usd:.4f} exceeded cap ${self.max_spend_usd:.2f}"
+            )
+        return ChatResult(
+            content=raw,
             input_tokens=tokens_in,
             output_tokens=tokens_out,
             latency_ms=latency_ms,

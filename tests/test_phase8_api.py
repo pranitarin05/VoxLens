@@ -57,6 +57,7 @@ def make_client(*, database: bool = True) -> tuple[TestClient, list[tuple]]:
         settings=Settings(),
         registry_factory=lambda _settings: FakeRegistry(),
         aspect_factory=lambda _registry, _settings: FakeAspects(),
+        rag_factory=lambda _settings: None,
         db_ping=lambda: database,
         request_sink=sink,
     )
@@ -177,12 +178,12 @@ def test_stats_reject_invalid_query(url: str) -> None:
         assert client.get(url).status_code == 422
 
 
-def test_ask_is_reserved_for_phase_9() -> None:
+def test_ask_is_disabled_when_rag_is_off() -> None:
     client, _ = make_client()
     with client:
         response = client.post("/v1/ask", json={"question": "How many negative reviews?"})
     assert response.status_code == 501
-    assert "Phase 9" in response.json()["detail"]
+    assert "disabled" in response.json()["detail"]
 
 
 def test_trend_query_whitelists_granularity_and_parameterises_filters() -> None:

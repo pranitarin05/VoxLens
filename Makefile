@@ -168,3 +168,21 @@ api-test:
 ## Phase 8: measured single-request latency against a running API
 api-load:
 	$(VENV_PY) scripts/load_test_api.py --n 200
+
+.PHONY: rag-embed rag-gold rag-eval rag-test
+
+## Phase 9: sample + embed 200k reviews into pgvector and build the HNSW index
+rag-embed:
+	$(VENV_PY) -m voc.rag.embed build
+
+## Phase 9: (re)build the 60-question gold set from the database
+rag-gold:
+	$(VENV_PY) scripts/build_rag_gold.py
+
+## Phase 9: evaluate RAG/SQL answers and write results/rag_eval.{md,json}
+rag-eval:
+	$(VENV_PY) -m voc.rag.evaluate
+
+## Phase 9: RAG unit + DB integration tests
+rag-test:
+	$(VENV_PY) -m pytest -q tests/test_phase9_rag.py

@@ -30,6 +30,10 @@ class Settings:
     max_length: int = 128
     torch_threads: int | None = None
     aspects_enabled: bool = True
+    rag_enabled: bool = True
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_device: str = "cpu"
+    rag_keep: int = 8
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -43,6 +47,12 @@ class Settings:
             max_length=int(os.environ.get("API_MAX_LENGTH", "128")),
             torch_threads=int(threads) if threads else None,
             aspects_enabled=os.environ.get("API_ASPECTS", "1") != "0",
+            rag_enabled=os.environ.get("API_RAG", "1") != "0",
+            embedding_model=os.environ.get(
+                "API_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
+            ),
+            embedding_device=os.environ.get("API_EMBED_DEVICE", "cpu"),
+            rag_keep=int(os.environ.get("API_RAG_KEEP", "8")),
         )
 
 
@@ -220,6 +230,57 @@ def build_aspect_extractor(registry: ModelRegistry, settings: Settings) -> Aspec
     if not settings.aspects_enabled:
         return None
     return AspectExtractor(registry, settings)
+
+
+class RagService:
+    """Embeddings + retrieval + whitelisted SQL + Groq phrasing, loaded once."""
+
+    def __init__(self, settings: Settings) -> None:
+        from sentence_transformers import SentenceTransformer
+
+        from voc.models.llm_zero_shot import LLMClient
+
+        self.settings = settings
+        self.embedder = SentenceTransformer(
+            settings.embedding_model, device=settings.embedding_device
+        )
+        self.client = LLMClient()
+        self._embed_lock = threading.Lock()
+
+    def answer(self, question: str, filters: dict[str, object] | None = None):
+        """Route one question; returns voc.rag.answer.AnswerResult."""
+        from voc.rag.answer import answer_from_docs, phrase_analysis
+        from voc.rag.retrieve import retrieve
+        from voc.rag.router import list_aspects, list_categories, route, run_analysis
+
+        filters = filters or {}
+        retrieval_keys = ("category", "product_id", "sentiment", "start", "end")
+        kwargs = {key: value for key, value in filters.items() if key in retrieval_keys}
+        sql_blocked = any(key in filters for key in ("product_id", "start", "end"))
+        with db_connection() as conn:
+            if route(question) == "sql" and not sql_blocked:
+                analysis = run_analysis(
+                    conn,
+                    question,
+                    list_categories(conn),
+                    list_aspects(conn),
+                    filters,
+                )
+                if analysis is not None:
+                    return phrase_analysis(self.client, question, analysis)
+            with self._embed_lock:
+                vector = self.embedder.encode(
+                    [question], normalize_embeddings=True, convert_to_numpy=True
+                )[0]
+            docs = retrieve(conn, vector, keep=self.settings.rag_keep, **kwargs)
+        return answer_from_docs(self.client, question, docs)
+
+
+def build_rag_service(settings: Settings) -> RagService | None:
+    """Build the RAG service unless explicitly disabled."""
+    if not settings.rag_enabled:
+        return None
+    return RagService(settings)
 
 
 def db_connection(timeout: int = 3) -> psycopg.Connection:

@@ -42,6 +42,9 @@ mlflow.db-*
 # Results that are regenerable but keep small committed files allowed;
 # large HTML reports stay local
 results/drift/*.html
+results/*_run.log
+results/*.err
+results/rag_embed.log
 
 # Jupyter
 .ipynb_checkpoints/

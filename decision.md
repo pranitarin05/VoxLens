@@ -172,6 +172,23 @@ Rules: never rewrite history; append new decisions; only measured facts.
 
 ---
 
+## D22 - 2026-11-20 - RAG pipeline and `/v1/ask` (Phase 9)
+
+- **Choice:** 200k stratified sample (largest-remainder quotas, seed 42) embedded with `all-MiniLM-L6-v2` (384 dims, normalized, CPU) into pgvector; cosine HNSW built after the load. Retrieval = top-20 then keep 8. Analytical questions run whitelisted SQL templates; the LLM only phrases facts. RAG answers are strict JSON (`answer`, `citations`, `abstained`); invalid output abstains with `parse_failed=true`.
+- **Safety:** all filter values are psycopg parameters; only `(category, label)`-style whitelists come from the DB. The LLM never emits or executes SQL. `/v1/ask` maps LLM/spend/DB failures to 503 and `API_RAG=0` to 501.
+- **Measured:** 200,000 embeddings, 0 nulls; HNSW `idx_review_embeddings_hnsw` in 269 s; query embed+retrieve 0.084 s; live uncached RAG answer 2.4 s wall / 2.06 s service time at $0.00018 per question (cached SQL question ~1.0 s wall, dominated by the category count scan).
+- **Consequence:** `/v1/ask` is implemented and covered by unit/contract tests plus a DB integration test (skipped when Postgres or sentence-transformers are absent).
+- **Status:** decided.
+
+## D23 - 2026-11-20 - RAG evaluation protocol (Phase 9)
+
+- **Choice:** 60-question gold set (`eval/rag_gold.jsonl`): 20 analytical (ground truth computed by independent SQL in `scripts/build_rag_gold.py`), 30 qualitative (draft key points, `draft-pending-owner-review`), 10 unanswerable. Metrics: numeric accuracy, SQL route rate, hit@8, answer rate, LLM-judge faithfulness, abstention accuracy, p50/p95 latency, per-set cost.
+- **Measured (live, `python -m voc.rag.evaluate`):** analytical 100% numeric accuracy and 100% SQL routing; qualitative hit@8 96.7%, answer rate 96.7%, faithfulness 93.1% (29 judged, 1 provider error excluded); unanswerable abstention 80% (8/10); run spend $0.0141; ledger $0.0581 of $5.00.
+- **Honesty notes:** qualitative key points and judge labels are agent drafts (owner review still required, including the PRD's 20 manual answer checks); hit@8 is a substring proxy; misses are reported as-is.
+- **Status:** decided; final sign-off pending owner review.
+
+---
+
 ## Open items (tracked, not decisions yet)
 
 | Item | Needed by | Status |

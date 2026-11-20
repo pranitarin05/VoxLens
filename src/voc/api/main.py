@@ -18,12 +18,14 @@ from voc.api.deps import (
     ModelRegistry,
     Settings,
     build_aspect_extractor,
+    build_rag_service,
     db_connection,
     log_requests,
     ping_database,
 )
 from voc.api.schemas import (
     AskRequest,
+    AskResponse,
     AspectCount,
     BatchPredictRequest,
     Granularity,
@@ -33,11 +35,13 @@ from voc.api.schemas import (
     PredictRequest,
     PredictResponse,
     Sentiment,
+    SourceOut,
     TopAspectsResponse,
     TrendPoint,
     TrendResponse,
 )
 from voc.db.queries import fetch_top_aspects, fetch_trend
+from voc.models.llm_zero_shot import LLMError, SpendCapExceeded
 
 LOGGER = logging.getLogger("voc.api")
 
@@ -80,6 +84,7 @@ def create_app(
     settings: Settings | None = None,
     registry_factory: Callable[[Settings], ModelRegistry] | None = None,
     aspect_factory: Callable[[ModelRegistry, Settings], Any] | None = None,
+    rag_factory: Callable[[Settings], Any] | None = None,
     db_ping: Callable[[], bool] | None = None,
     request_sink: Callable[[list[tuple[str, str, float, str, int]]], bool] | None = None,
 ) -> FastAPI:
@@ -87,6 +92,7 @@ def create_app(
     settings = settings or Settings.from_env()
     registry_factory = registry_factory or ModelRegistry.load
     aspect_factory = aspect_factory or build_aspect_extractor
+    rag_factory = rag_factory or build_rag_service
     db_ping = db_ping or ping_database
     request_sink = request_sink or log_requests
     configure_logging()
@@ -95,6 +101,7 @@ def create_app(
         app.state.settings = settings
         app.state.registry = registry_factory(settings)
         app.state.aspects = aspect_factory(app.state.registry, settings)
+        app.state.rag = rag_factory(settings)
         app.state.db_ping = db_ping
         app.state.request_sink = request_sink
         LOGGER.info(
@@ -104,6 +111,7 @@ def create_app(
                     "production": app.state.registry.production,
                     "models": [m["name"] for m in app.state.registry.info()],
                     "aspects": app.state.aspects is not None,
+                    "rag": app.state.rag is not None,
                 }
             )
         )
@@ -260,13 +268,35 @@ def create_app(
             raise HTTPException(status_code=503, detail="database unavailable") from exc
         return TopAspectsResponse(aspects=[AspectCount(**row) for row in rows])
 
-    @app.post("/v1/ask")
-    def ask(payload: AskRequest, request: Request) -> Response:
-        """Reserved for Phase 9 (RAG); keeps the contract visible today."""
-        raise HTTPException(
-            status_code=501,
-            detail="RAG question answering arrives in Phase 9",
-            headers={"X-Request-ID": request.state.request_id},
+    @app.post("/v1/ask", response_model=AskResponse)
+    def ask(payload: AskRequest, request: Request) -> AskResponse:
+        """Grounded RAG/SQL answer with sources and explicit abstention."""
+        service = request.app.state.rag
+        if service is None:
+            raise HTTPException(
+                status_code=501,
+                detail="RAG is disabled (API_RAG=0)",
+                headers={"X-Request-ID": request.state.request_id},
+            )
+        filters = payload.filters.model_dump(exclude_none=True) if payload.filters else {}
+        try:
+            result = service.answer(payload.question, filters)
+        except SpendCapExceeded as exc:
+            raise HTTPException(status_code=503, detail="LLM spend cap reached") from exc
+        except LLMError as exc:
+            raise HTTPException(status_code=503, detail=f"LLM unavailable: {exc}") from exc
+        except Exception as exc:  # noqa: BLE001 - DB/provider outages become 503
+            LOGGER.exception("ask failed")
+            raise HTTPException(status_code=503, detail="answer service unavailable") from exc
+        return AskResponse(
+            answer=result.answer,
+            sources=[SourceOut(**source) for source in result.sources],
+            abstained=result.abstained,
+            route=result.route,
+            latency_ms=result.latency_ms,
+            cost_usd=result.cost_usd,
+            citations=result.citations,
+            parse_failed=result.parse_failed,
         )
 
     return app

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
@@ -97,8 +98,41 @@ class TopAspectsResponse(BaseModel):
     aspects: list[AspectCount]
 
 
+class AskFilters(BaseModel):
+    """Optional structured filters for retrieval and whitelisted SQL."""
+
+    category: Annotated[str | None, Field(max_length=64)] = None
+    product_id: Annotated[str | None, Field(max_length=64)] = None
+    sentiment: Sentiment | None = None
+    start: date | None = None
+    end: date | None = None
+
+
 class AskRequest(BaseModel):
-    """Natural-language question; filters arrive in Phase 9."""
+    """Natural-language question with optional filters (PRD section 9)."""
 
     question: Annotated[str, Field(min_length=1, max_length=500)]
-    filters: dict[str, str] | None = None
+    filters: AskFilters | None = None
+
+
+class SourceOut(BaseModel):
+    """A review used as evidence: id, snippet and cosine similarity."""
+
+    review_id: str
+    snippet: str
+    score: float
+    label: Sentiment | None = None
+    category: str | None = None
+
+
+class AskResponse(BaseModel):
+    """Grounded answer with evidence, abstention flag and route."""
+
+    answer: str
+    sources: list[SourceOut]
+    abstained: bool
+    route: Literal["rag", "sql"]
+    latency_ms: float
+    cost_usd: float = 0.0
+    citations: list[int] = Field(default_factory=list)
+    parse_failed: bool = False
