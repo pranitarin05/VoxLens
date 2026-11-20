@@ -282,7 +282,7 @@ Version policy: before installing anything, check the current stable release and
 - [x] Phase 5 DistilBERT and BERT trained and imported
 - [x] Phase 6 LLM zero-shot and full comparison table
 - [ ] Phase 7 aspect extraction with gold-set scores (code + DB + draft gold done; owner review of 100 labels pending)
-- [ ] Phase 8 FastAPI service with tests
+- [x] Phase 8 FastAPI service with tests
 - [ ] Phase 9 RAG with evaluation report
 - [ ] Phase 10 Airflow DAG and drift monitoring
 - [ ] Phase 11 Streamlit dashboard

@@ -156,3 +156,15 @@ aspects-gold:
 ## Phase 7: score aspect detection + sentiment against the gold file
 aspects-eval:
 	$(VENV_PY) -m voc.nlp.aspects evaluate
+
+## Phase 8: run the API locally (models load once at startup)
+api-run:
+	$(VENV_PY) -m uvicorn voc.api.main:app --host 127.0.0.1 --port $(if $(API_PORT),$(API_PORT),8000)
+
+## Phase 8: API contract/validation tests
+api-test:
+	$(VENV_PY) -m pytest -q tests/test_phase8_api.py
+
+## Phase 8: measured single-request latency against a running API
+api-load:
+	$(VENV_PY) scripts/load_test_api.py --n 200

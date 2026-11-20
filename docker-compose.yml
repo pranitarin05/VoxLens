@@ -22,5 +22,35 @@ services:
       retries: 12
       start_period: 10s
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: voc-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-voc}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD not set - copy .env.example to .env}@postgres:5432/${POSTGRES_DB:-voc}
+      API_PRODUCTION_MODEL: ${API_PRODUCTION_MODEL:-distilbert}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./models:/app/models:ro
+      - ./configs:/app/configs:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
 volumes:
   pgdata:

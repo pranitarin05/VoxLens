@@ -9,15 +9,14 @@ from __future__ import annotations
 
 import os
 
-import mlflow
-from mlflow.tracking import MlflowClient
-
 DEFAULT_TRACKING_URI = "sqlite:///mlflow.db"
 DEFAULT_EXPERIMENT = "voc-sentiment"
 
 
 def configure() -> str:
     """Point MLflow at the configured tracking store and experiment; return URI."""
+    import mlflow
+
     uri = os.environ.get("MLFLOW_TRACKING_URI", DEFAULT_TRACKING_URI)
     mlflow.set_tracking_uri(uri)
     mlflow.set_experiment(os.environ.get("MLFLOW_EXPERIMENT_NAME", DEFAULT_EXPERIMENT))
@@ -32,6 +31,9 @@ def register_model(
     alias: str = "production",
 ) -> str:
     """Register a logged model and assign the alias; return the new version."""
+    import mlflow
+    from mlflow.tracking import MlflowClient
+
     model_uri = f"runs:/{run_id}/{artifact_path}"
     version = mlflow.register_model(model_uri, model_name)
     client = MlflowClient()
@@ -41,6 +43,8 @@ def register_model(
 
 def get_production_version(model_name: str, alias: str = "production") -> str | None:
     """Return the model version behind an alias, or None if unset."""
+    from mlflow.tracking import MlflowClient
+
     client = MlflowClient()
     try:
         version = client.get_model_version_by_alias(model_name, alias)

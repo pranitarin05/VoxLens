@@ -11,7 +11,6 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
-import mlflow
 import pandas as pd
 
 from voc.evaluation.cost import monthly_cost_at_1m, self_hosted_cost_per_1k
@@ -40,6 +39,8 @@ def evaluate_and_log(
     extra_params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Score ``texts``, measure latency, compute cost, log to MLflow, return a row."""
+    import mlflow
+
     configure()
     latency = measure_latency(predict_fn, texts, **(latency_kwargs or {}))
     y_pred = list(predict_fn(list(texts)))

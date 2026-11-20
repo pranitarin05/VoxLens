@@ -157,6 +157,19 @@ Rules: never rewrite history; append new decisions; only measured facts.
 - **Consequence:** Phase 7 code, DB load and pipeline are done; the PRD checkbox stays open until the owner reviews/corrects `eval/aspect_gold.jsonl`.
 - **Status:** decided, pending owner review of the gold labels.
 
+## D21 · 2026-11-19 · Serving API (Phase 8)
+
+- **Startup model loading:** `ModelRegistry.load` eagerly loads every model present in `models/` (TF-IDF, DistilBERT, BERT) once during the lifespan; requests never load models. A missing optional model is skipped with a warning, a missing production model aborts startup.
+- **Versions:** fixed identifiers mapped to on-disk artifacts (`tfidf-logreg-v1`, `distilbert-60k-v1`, `bert-30k-v1`). MLflow remains the experiment registry; the API reads artifacts directly so serving does not depend on the tracking store.
+- **Aspects:** `/v1/predict` returns spaCy mentions with sentence sentiment from DistilBERT, independent of the requested sentiment model. `API_ASPECTS=0` disables this.
+- **Stats source:** endpoints use ground-truth `reviews.label` (the `predictions` table is populated by Phase 10 batch jobs). The only interpolated SQL token is the `date_trunc` unit, looked up in a whitelist; all filters are psycopg parameters.
+- **Audit:** each scored text yields one `api_requests` row. Inserts are best effort: a database outage makes `/health` return `degraded` but does not fail prediction. This is a deliberate availability choice and is reported in health.
+- **Latency:** batch responses carry the whole-batch scoring time in each item (documented in the schema) because a per-item timing inside one batched forward pass would be invented.
+- **`/v1/ask`:** returns `501` with the contract kept visible until Phase 9 implements RAG.
+- **Measured:** p50 222.977 / p95 239.986 / p99 248.929 ms for single predicts including aspect extraction on CPU (target p95 < 300 ms); 0/200 errors; 220 audit rows written. Details in `results/api_load_test.md`.
+- **CI:** the previous workflow had been red since Phase 4 (no Postgres service, MLflow imported in a `.[dev]`-only job). Fixed with a pgvector service, `DATABASE_URL`, lazy MLflow imports and `importorskip` for torch/transformers/spaCy tests. Verified locally in a clean `.[dev]` venv (62 passed, ML-only tests skipped).
+- **Status:** decided.
+
 ---
 
 ## Open items (tracked, not decisions yet)

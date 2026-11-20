@@ -28,7 +28,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Any
 
-import mlflow
 import numpy as np
 import pandas as pd
 import typer
@@ -478,6 +477,8 @@ def evaluate(
         row[f"f1_{label}"] = cls["f1"]
 
     configure()
+    import mlflow
+
     with mlflow.start_run(run_name=f"llm-zero-shot-{dataset}") as run:
         mlflow.log_params(
             {

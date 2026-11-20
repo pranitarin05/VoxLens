@@ -66,3 +66,7 @@ airflow/webserver_config.py
 
 # Docker volumes (if ever local)
 .docker/
+
+# Local DB backups and the clean env used to reproduce CI
+backups/
+.ci-venv/

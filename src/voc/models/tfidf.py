@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Annotated
 
 import joblib
-import mlflow
 import numpy as np
 import pandas as pd
 import typer
@@ -79,6 +78,8 @@ def train(
     model_path: Path = MODEL_PATH,
 ) -> dict[str, object]:
     """Tune C on validation macro-F1, save the best pipeline, log to MLflow."""
+    import mlflow
+
     train_frame = load_split(train_split)
     val_frame = load_split(val_split)
     x_train, y_train = train_frame["clean_text"], train_frame["label"]

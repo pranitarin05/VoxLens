@@ -1,0 +1,10 @@
+.git
+.github
+.venv
+data
+models
+mlruns
+.cache
+notebooks
+**/__pycache__
+*.pyc

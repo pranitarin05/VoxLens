@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-import torch
 
-from voc.models.transformer import (
+torch = pytest.importorskip("torch")
+pytest.importorskip("transformers")
+
+from voc.models.transformer import (  # noqa: E402
     ID2LABEL,
     LABEL2ID,
     ReviewDataset,

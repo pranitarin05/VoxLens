@@ -9,6 +9,22 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: voc
+          POSTGRES_PASSWORD: voc
+          POSTGRES_DB: voc
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U voc -d voc"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql+psycopg://voc:voc@localhost:5432/voc
     steps:
       - uses: actions/checkout@v4
 
